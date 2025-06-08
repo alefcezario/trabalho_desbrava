@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "169373647693",
+    "project_id": "desbrava-app-7c347",
+    "storage_bucket": "desbrava-app-7c347.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:169373647693:android:36880c922c6d6fa1072d04",
+        "android_client_info": {
+          "package_name": "com.example.my_desbrava"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4fJeMSIIdjSOm0zCe_sghKrFsfYKL19g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
