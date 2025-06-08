@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:my_desbrava/home_screen.dart';
 import 'package:my_desbrava/app_scaffold.dart';
-import 'package:my_desbrava/profile_screen.dart'; // Importa a nova tela de perfil
+import 'package:my_desbrava/places_screen.dart'; // Importa a nova tela de lugares
+import 'package:my_desbrava/profile_screen.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -13,17 +14,16 @@ class MainWrapper extends StatefulWidget {
 class _MainWrapperState extends State<MainWrapper> {
   int _selectedIndex = 0;
 
-  // ATUALIZADO: Trocamos o placeholder pela tela de perfil real.
   static final List<Widget> _widgetOptions = <Widget>[
     const HomeScreen(),
-    const Center(child: Text('Página de Lugares')),
+    const PlacesScreen(), // <<< MUDANÇA AQUI
     const Center(child: Text('Página de Favoritos')),
-    const ProfileScreen(), // <<< MUDANÇA AQUI
+    const ProfileScreen(),
   ];
 
   static const List<String> _widgetTitles = <String>[
     'Início',
-    'Lugares',
+    'Lugares Próximos', // Título atualizado
     'Favoritos',
     'Perfil',
   ];

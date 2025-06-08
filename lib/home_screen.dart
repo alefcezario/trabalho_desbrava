@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_desbrava/category_places_screen.dart'; // Importa a nossa nova tela
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -7,19 +8,17 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     const Color lightBeige = Color(0xFFEAE7DC);
 
-    // O Scaffold e a AppBar foram removidos, pois agora são controlados pelo AppScaffold.
     return Container(
-      color: lightBeige, // A cor de fundo principal
+      color: lightBeige,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: ListView(
           children: [
             const SizedBox(height: 20),
-            // ---- TÍTULO E SUBTÍTULO ----
             const Text(
               'Bem-Vindo!',
               style: TextStyle(
-                color: Colors.black, // Cor alterada para ser legível no fundo claro
+                color: Colors.black,
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
               ),
@@ -28,35 +27,63 @@ class HomeScreen extends StatelessWidget {
             const Text(
               'Descubra novos lugares para visitar.',
               style: TextStyle(
-                color: Colors.black54, // Cor alterada
+                color: Colors.black54,
                 fontSize: 16,
               ),
             ),
             const SizedBox(height: 40),
 
-            // ---- CATEGORIAS ----
+            // ---- CATEGORIAS COM NAVEGAÇÃO ----
             CategoryCard(
               icon: Icons.waterfall_chart,
               title: 'Cachoeiras',
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CategoryPlacesScreen(categoryName: 'Cachoeiras'),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 16),
             CategoryCard(
               icon: Icons.museum_outlined,
               title: 'Museus',
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CategoryPlacesScreen(categoryName: 'Museus'),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 16),
             CategoryCard(
               icon: Icons.park_outlined,
               title: 'Parques',
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CategoryPlacesScreen(categoryName: 'Parques'),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 16),
             CategoryCard(
-              icon: Icons.terrain, // Ícone trocado para melhor representar trilhas
+              icon: Icons.terrain,
               title: 'Trilhas',
-              onTap: () {},
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CategoryPlacesScreen(categoryName: 'Trilhas'),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -81,7 +108,7 @@ class CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 4, // Aumentei um pouco a sombra
+      elevation: 4,
       shadowColor: Colors.black26,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       child: ListTile(

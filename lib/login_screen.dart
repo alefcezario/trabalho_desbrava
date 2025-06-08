@@ -29,53 +29,78 @@ class _LoginScreenState extends State<LoginScreen> {
   // Função para fazer o login com o Firebase
   Future<void> _login() async {
     // Verifica se os campos são válidos
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true; // Ativa o indicador de progresso
-      });
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-      try {
-        // Tenta fazer o login no Firebase
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
+    setState(() {
+      _isLoading = true; // Ativa o indicador de progresso
+    });
+
+    try {
+      // Tenta fazer o login no Firebase
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Se o login for bem-sucedido, navega para a tela principal
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainWrapper()),
+              (Route<dynamic> route) => false,
         );
-
-        // Se o login for bem-sucedido, navega para a tela principal
-        if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const MainWrapper()),
-                (Route<dynamic> route) => false,
-          );
-        }
-
-      } on FirebaseAuthException catch (e) {
-        // Trata erros específicos de autenticação
-        String errorMessage = 'E-mail ou senha incorretos.';
-        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-          errorMessage = 'E-mail ou senha inválidos. Tente novamente.';
-        }
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-          );
-        }
-      } catch (e) {
-        // Trata outros erros
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ocorreu um erro: $e'), backgroundColor: Colors.red),
-          );
-        }
-      } finally {
-        // Garante que o indicador de progresso seja desativado
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
       }
+
+    } on FirebaseAuthException catch (e) {
+      // Trata erros específicos de autenticação
+      String errorMessage = 'E-mail ou senha incorretos.';
+      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        errorMessage = 'E-mail ou senha inválidos. Tente novamente.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      // Trata outros erros
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ocorreu um erro: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      // Garante que o indicador de progresso seja desativado
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // <<< NOVA FUNÇÃO ADICIONADA AQUI >>>
+  // Função para redefinir a senha
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, digite seu e-mail para redefinir a senha.'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Se o e-mail estiver registado, um link de redefinição foi enviado.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ocorreu um erro ao enviar o e-mail: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -164,7 +189,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 40),
+                // <<< NOVO WIDGET ADICIONADO AQUI >>>
+                // ---- LINK ESQUECI A SENHA ----
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _resetPassword,
+                    child: const Text(
+                      'Esqueci minha senha',
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
 
                 // ---- BOTÃO ENTRAR ----
                 SizedBox(
