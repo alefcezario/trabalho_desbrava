@@ -1,1 +1,39 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"desbrava-app-7c347","appId":"1:169373647693:android:36880c922c6d6fa1072d04","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"desbrava-app-7c347","configurations":{"android":"1:169373647693:android:36880c922c6d6fa1072d04","ios":"1:169373647693:ios:49a306a252411220072d04","macos":"1:169373647693:ios:49a306a252411220072d04","web":"1:169373647693:web:1697b42b705f4f0c072d04","windows":"1:169373647693:web:1999f7d7451090a9072d04"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "desbrava-app-7c347",
+          "appId": "1:169373647693:android:36880c922c6d6fa1072d04",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "desbrava-app-7c347",
+          "configurations": {
+            "android": "1:169373647693:android:36880c922c6d6fa1072d04",
+            "ios": "1:169373647693:ios:49a306a252411220072d04",
+            "macos": "1:169373647693:ios:49a306a252411220072d04",
+            "web": "1:169373647693:web:1697b42b705f4f0c072d04",
+            "windows": "1:169373647693:web:1999f7d7451090a9072d04"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

@@ -1,25 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
-
-// Modelo para guardar as informações de cada lugar
-class Place {
-  final String id;
-  final String name;
-  final String category;
-  final String imageUrl;
-  final GeoPoint location;
-  double distance; // Distância calculada em Km
-
-  Place({
-    required this.id,
-    required this.name,
-    required this.category,
-    required this.imageUrl,
-    required this.location,
-    this.distance = 0.0,
-  });
-}
+// O import 'package:geocoding/geocoding.dart'; foi removido.
+import 'package:my_desbrava/widgets/place_card.dart';
 
 class PlacesScreen extends StatefulWidget {
   const PlacesScreen({super.key});
@@ -29,43 +12,61 @@ class PlacesScreen extends StatefulWidget {
 }
 
 class _PlacesScreenState extends State<PlacesScreen> {
-  Future<List<Place>>? _placesFuture;
+  // Variáveis de estado simplificadas
+  bool _isLoading = true;
+  bool _permissionDenied = false;
+  List<Place> _places = [];
+  // O TextEditingController foi removido.
 
   @override
   void initState() {
     super.initState();
-    _placesFuture = _fetchAndSortPlaces();
+    _getUserLocationAndLoadPlaces();
   }
 
-  // Função principal que busca a localização e os lugares
-  Future<List<Place>> _fetchAndSortPlaces() async {
-    // 1. Obter permissão e localização do utilizador
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+  // Função que tenta obter a localização e carregar os locais
+  Future<void> _getUserLocationAndLoadPlaces() async {
+    setState(() {
+      _isLoading = true;
+      _permissionDenied = false; // Reseta o estado de erro ao tentar novamente
+    });
+
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
-        throw Exception('Permissão de localização negada.');
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Permissão de localização negada pelo utilizador.');
+        }
+      }
+
+      Position userPosition = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      await _loadPlaces(userPosition);
+
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _permissionDenied = true;
+          _isLoading = false;
+        });
       }
     }
+  }
 
-    Position userPosition = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+  // A função _getCoordinatesFromAddress foi removida.
 
-    // 2. Buscar todos os lugares no Firestore
+  // A função _loadPlaces permanece a mesma
+  Future<void> _loadPlaces(Position userPosition) async {
     QuerySnapshot placesSnapshot = await FirebaseFirestore.instance.collection('places').get();
-
     List<Place> places = [];
+
     for (var doc in placesSnapshot.docs) {
       Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-      // Verificamos se o campo 'location' existe e é do tipo GeoPoint antes de o usar.
       if (data.containsKey('location') && data['location'] is GeoPoint) {
         GeoPoint placeLocation = data['location'];
-
         double distanceInMeters = Geolocator.distanceBetween(
-          userPosition.latitude,
-          userPosition.longitude,
-          placeLocation.latitude,
-          placeLocation.longitude,
+            userPosition.latitude, userPosition.longitude,
+            placeLocation.latitude, placeLocation.longitude
         );
 
         places.add(Place(
@@ -73,151 +74,82 @@ class _PlacesScreenState extends State<PlacesScreen> {
           name: data['name'] ?? 'Nome indisponível',
           category: data['category'] ?? 'Sem categoria',
           imageUrl: data['imageUrl'] ?? '',
+          address: data['address'] ?? 'Endereço não informado',
           location: placeLocation,
-          distance: distanceInMeters / 1000, // Converter para Km
+          distance: distanceInMeters / 1000,
         ));
-      } else {
-        // Se um lugar não tiver localização, avisamos no console e ignoramo-lo.
-        print('Documento ${doc.id} ignorado por não ter uma localização válida.');
       }
     }
-
-    // 4. Ordenar a lista por distância
     places.sort((a, b) => a.distance.compareTo(b.distance));
 
-    return places;
+    if(mounted) {
+      setState(() {
+        _places = places;
+        _isLoading = false;
+        _permissionDenied = false;
+      });
+    }
   }
+
+  // A função _showManualAddressDialog foi removida.
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFFF0F0F0),
-      child: FutureBuilder<List<Place>>(
-        future: _placesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Erro: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Nenhum lugar encontrado.'));
-          }
-
-          List<Place> places = snapshot.data!;
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: places.length,
-            itemBuilder: (context, index) {
-              return PlaceCard(place: places[index]);
-            },
-          );
-        },
-      ),
+      child: _buildContent(),
     );
   }
-}
 
-// Widget para o cartão de cada lugar
-class PlaceCard extends StatelessWidget {
-  final Place place;
-  const PlaceCard({super.key, required this.place});
-
-  @override
-  Widget build(BuildContext context) {
-    // <<< LÓGICA DE TEMPO E ÍCONE ATUALIZADA >>>
-    IconData travelIcon;
-    String formattedTravelTime;
-
-    // Simulação de tempo de viagem a pé (ex: 12 minutos por Km)
-    final walkingTimeMinutes = (place.distance * 12).ceil();
-
-    if (walkingTimeMinutes > 30) {
-      // Se a caminhada for longa, calcula e mostra o tempo de carro
-      travelIcon = Icons.directions_car;
-      // Simulação de tempo de carro (ex: 4 minutos por Km)
-      final carTimeMinutes = (place.distance * 4).ceil();
-      if (carTimeMinutes < 60) {
-        formattedTravelTime = '$carTimeMinutes min';
-      } else {
-        final hours = carTimeMinutes ~/ 60;
-        final minutes = carTimeMinutes % 60;
-        formattedTravelTime = '${hours}h ${minutes > 0 ? '${minutes}min' : ''}';
-      }
-    } else {
-      // Caso contrário, mostra o tempo a pé
-      travelIcon = Icons.directions_walk;
-      formattedTravelTime = '$walkingTimeMinutes min';
+  // Widget que constrói o conteúdo da tela com base no estado
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return Card(
-      elevation: 4,
-      shadowColor: Colors.black26,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Image.network(
-            place.imageUrl,
-            height: 150,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => Container(
-              height: 150,
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image, color: Colors.grey, size: 50),
-            ),
+    // UI ATUALIZADA PARA O ESTADO DE PERMISSÃO NEGADA
+    if (_permissionDenied) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.location_off, size: 60, color: Colors.grey),
+              const SizedBox(height: 20),
+              const Text(
+                'Acesso à localização negado',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Para ver os locais mais próximos, precisamos da sua permissão.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.black54),
+              ),
+              const SizedBox(height: 30),
+              // Botão único para tentar a permissão novamente
+              ElevatedButton(
+                onPressed: _getUserLocationAndLoadPlaces,
+                child: const Text('Tentar Novamente'),
+              )
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        place.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(travelIcon, size: 16, color: Colors.black54), // Ícone dinâmico
-                          const SizedBox(width: 4),
-                          Text('${place.distance.toStringAsFixed(1)} Km', style: const TextStyle(color: Colors.black54)),
-                          const SizedBox(width: 12),
-                          const Icon(Icons.access_time, size: 16, color: Colors.black54),
-                          const SizedBox(width: 4),
-                          Text(formattedTravelTime, style: const TextStyle(color: Colors.black54)), // Tempo formatado
-                          const SizedBox(width: 12),
-                          Text(place.category, style: const TextStyle(color: Colors.black54)),
-                        ],
-                      )
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0A192F),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  ),
-                  child: const Text('Começar'),
-                )
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      );
+    }
+
+    if (_places.isEmpty) {
+      return const Center(child: Text('Nenhum lugar encontrado.'));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemCount: _places.length,
+      itemBuilder: (context, index) {
+        return PlaceCard(place: _places[index]);
+      },
     );
   }
 }

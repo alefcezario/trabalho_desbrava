@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:my_desbrava/main.dart'; // Importa o main.dart para a navegação de logout
+import 'package:my_desbrava/main.dart';
+import 'package:my_desbrava/maintenance_screen.dart'; // Importa a tela de manutenção
 
 // Este é um widget reutilizável que define a estrutura padrão da tela
 // com uma AppBar e um Drawer (menu lateral).
@@ -25,10 +26,15 @@ class AppScaffold extends StatelessWidget {
         backgroundColor: darkBlue,
         iconTheme: const IconThemeData(color: Colors.white), // Define a cor do ícone do menu
         actions: [
+          // <<< ATUALIZADO AQUI >>>
           IconButton(
             icon: const Icon(Icons.notifications_none, color: Colors.white),
             onPressed: () {
-              // TODO: Navegar para a tela de notificações
+              // Navega para a tela de manutenção
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MaintenanceScreen()),
+              );
             },
           ),
         ],

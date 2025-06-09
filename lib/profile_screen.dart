@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:my_desbrava/maintenance_screen.dart'; // Importa a tela de manutenção
+import 'package:my_desbrava/widgets/place_card.dart';
 
-// Este é um StatefulWidget porque precisa buscar dados (que podem mudar ou demorar a carregar).
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -11,7 +12,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Futuro que guardará os dados do nosso utilizador.
   late Future<DocumentSnapshot<Map<String, dynamic>>> _userFuture;
 
   @override
@@ -20,14 +20,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _userFuture = _getUserData();
   }
 
-  // Função que busca os dados do utilizador no Firestore.
   Future<DocumentSnapshot<Map<String, dynamic>>> _getUserData() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      // Se não houver utilizador, retorna um futuro com erro.
       return Future.error('Nenhum utilizador logado.');
     }
-    // Retorna o futuro que busca o documento do utilizador.
     return FirebaseFirestore.instance.collection('users').doc(user.uid).get();
   }
 
@@ -36,29 +33,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     const Color lightBeige = Color(0xFFEAE7DC);
 
     return Container(
-      color: const Color(0xFFF0F0F0), // Cor de fundo principal
+      color: const Color(0xFFF0F0F0),
       child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         future: _userFuture,
         builder: (context, snapshot) {
-          // Enquanto os dados estão a ser carregados, mostra um círculo de progresso.
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
-          // Se ocorrer um erro, mostra uma mensagem.
           if (snapshot.hasError || !snapshot.hasData || snapshot.data?.data() == null) {
             return const Center(child: Text('Não foi possível carregar os dados do perfil.'));
           }
 
-          // Se os dados foram carregados com sucesso:
           final userData = snapshot.data!.data()!;
           final String name = userData['name'] ?? 'Nome não encontrado';
           final String? photoUrl = userData['photoUrl'];
 
-          // Constrói a UI com os dados do utilizador
           return Stack(
             children: [
-              // Fundo decorativo
               ClipPath(
                 clipper: ProfileBackgroundClipper(),
                 child: Container(
@@ -66,14 +57,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: lightBeige,
                 ),
               ),
-              // Conteúdo principal
               Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: Column(
                     children: [
                       const SizedBox(height: 30),
-                      // ---- FOTO DE PERFIL ----
                       CircleAvatar(
                         radius: 60,
                         backgroundColor: Colors.grey.shade400,
@@ -83,7 +72,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             : null,
                       ),
                       const SizedBox(height: 16),
-                      // ---- NOME DO UTILIZADOR ----
                       Text(
                         name,
                         style: const TextStyle(
@@ -94,43 +82,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 40),
 
-                      // ---- SESSÃO DE MEDALHAS ----
-                      Card(
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Medalhas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  Icon(Icons.emoji_events, color: Colors.amber, size: 40),
-                                  Icon(Icons.emoji_events, color: Colors.amber, size: 40),
-                                  Icon(Icons.emoji_events, color: Colors.amber, size: 40),
-                                ],
-                              )
-                            ],
+                      // <<< ATUALIZADO AQUI >>>
+                      // Envolvemos o cartão num GestureDetector para o tornar clicável
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceScreen()));
+                        },
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Medalhas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    Icon(Icons.emoji_events, color: Colors.amber, size: 40),
+                                    Icon(Icons.emoji_events, color: Colors.amber, size: 40),
+                                    Icon(Icons.emoji_events, color: Colors.amber, size: 40),
+                                  ],
+                                )
+                              ],
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 20),
 
-                      // ---- BOTÕES DE OPÇÕES ----
+                      // <<< ATUALIZADO AQUI >>>
                       OptionButton(
                         icon: Icons.settings,
                         text: 'Configurações de perfil',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceScreen()));
+                        },
                       ),
                       const SizedBox(height: 12),
                       OptionButton(
                         icon: Icons.shield_outlined,
                         text: 'Privacidade',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceScreen()));
+                        },
                       ),
                     ],
                   ),
@@ -144,7 +142,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// Widget reutilizável para os botões de opção
 class OptionButton extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -183,7 +180,6 @@ class OptionButton extends StatelessWidget {
   }
 }
 
-// Classe para criar a forma curvada do fundo
 class ProfileBackgroundClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
