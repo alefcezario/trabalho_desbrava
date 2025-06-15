@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:my_desbrava/maintenance_screen.dart'; // Importa a tela de manutenção
+import 'package:my_desbrava/edit_profile_screen.dart';
+import 'package:my_desbrava/maintenance_screen.dart';
+import 'package:my_desbrava/my_contributions_screen.dart';
 import 'package:my_desbrava/widgets/place_card.dart';
+import 'package:my_desbrava/legal_document_screen.dart';
+import 'package:my_desbrava/main.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,14 +16,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late Future<DocumentSnapshot<Map<String, dynamic>>> _userFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _userFuture = _getUserData();
-  }
-
   Future<DocumentSnapshot<Map<String, dynamic>>> _getUserData() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -35,7 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       color: const Color(0xFFF0F0F0),
       child: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        future: _userFuture,
+        future: _getUserData(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -57,13 +53,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: lightBeige,
                 ),
               ),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 30),
-                      CircleAvatar(
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: ListView(
+                  children: [
+                    const SizedBox(height: 30),
+                    Center(
+                      child: CircleAvatar(
                         radius: 60,
                         backgroundColor: Colors.grey.shade400,
                         backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
@@ -71,8 +67,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ? const Icon(Icons.person, size: 60, color: Colors.white)
                             : null,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
+                    ),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: Text(
                         name,
                         style: const TextStyle(
                           fontSize: 28,
@@ -80,58 +78,101 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: Color(0xFF0A192F),
                         ),
                       ),
-                      const SizedBox(height: 40),
+                    ),
+                    const SizedBox(height: 40),
 
-                      // <<< ATUALIZADO AQUI >>>
-                      // Envolvemos o cartão num GestureDetector para o tornar clicável
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceScreen()));
-                        },
-                        child: Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(20.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Medalhas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: [
-                                    Icon(Icons.emoji_events, color: Colors.amber, size: 40),
-                                    Icon(Icons.emoji_events, color: Colors.amber, size: 40),
-                                    Icon(Icons.emoji_events, color: Colors.amber, size: 40),
-                                  ],
-                                )
-                              ],
-                            ),
+                    // <<< SEÇÃO DE MEDALHAS REVERTIDA PARA A VERSÃO ANTERIOR >>>
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceScreen()));
+                      },
+                      child: Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Medalhas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black54)),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  Icon(Icons.emoji_events, color: Colors.amber, size: 40),
+                                  Icon(Icons.emoji_events, color: Colors.amber, size: 40),
+                                  Icon(Icons.emoji_events, color: Colors.amber, size: 40),
+                                ],
+                              )
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                    ),
+                    const SizedBox(height: 20),
 
-                      // <<< ATUALIZADO AQUI >>>
-                      OptionButton(
-                        icon: Icons.settings,
-                        text: 'Configurações de perfil',
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceScreen()));
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      OptionButton(
-                        icon: Icons.shield_outlined,
-                        text: 'Privacidade',
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceScreen()));
-                        },
-                      ),
-                    ],
-                  ),
+                    // O resto dos botões continua como estava
+                    OptionButton(
+                      icon: Icons.rate_review_outlined,
+                      text: 'Minhas Contribuições',
+                      onTap: () {
+                        // A tela de contribuições ainda precisa do índice para funcionar
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const MyContributionsScreen()));
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
+                    OptionButton(
+                      icon: Icons.settings,
+                      text: 'Configurações de perfil',
+                      onTap: () async {
+                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
+                        setState(() {});
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    OptionButton(
+                      icon: Icons.description_outlined,
+                      text: 'Termos de Uso',
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) =>
+                        const LegalDocumentScreen(
+                          title: 'Termos de Uso',
+                          content: termsOfUseContent,
+                        )
+                        ));
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    OptionButton(
+                      icon: Icons.shield_outlined,
+                      text: 'Política de Privacidade',
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) =>
+                        const LegalDocumentScreen(
+                          title: 'Política de Privacidade',
+                          content: privacyPolicyContent,
+                        )
+                        ));
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    OptionButton(
+                      icon: Icons.logout,
+                      text: 'Sair',
+                      onTap: () async {
+                        await FirebaseAuth.instance.signOut();
+                        if (context.mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                                (Route<dynamic> route) => false,
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
             ],

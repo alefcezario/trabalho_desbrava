@@ -7,19 +7,20 @@ import 'package:my_desbrava/review_place_screen.dart';
 import 'package:my_desbrava/widgets/place_card.dart';
 import 'package:my_desbrava/route_suggestion_screen.dart';
 
-// NOVO MODELO: Para representar uma avaliação individual
 class PlaceReview {
-  final String userName;
-  final String? userPhotoUrl;
+  final String userId;
   final String comment;
-  final double averageRating;
+  final double limpezaRating;
+  final double conservacaoRating;
+  final double segurancaRating;
   final Timestamp createdAt;
 
   PlaceReview({
-    required this.userName,
-    this.userPhotoUrl,
+    required this.userId,
     required this.comment,
-    required this.averageRating,
+    required this.limpezaRating,
+    required this.conservacaoRating,
+    required this.segurancaRating,
     required this.createdAt,
   });
 }
@@ -38,35 +39,39 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   String _placeDescription = 'Carregando descrição...';
   bool _isFavorited = false;
   bool _isLoadingFavorite = true;
-  // NOVO ESTADO: Para guardar as avaliações
   late Future<List<PlaceReview>> _reviewsFuture;
+  bool _showAllReviews = false;
 
 
   @override
   void initState() {
     super.initState();
     _fetchPlaceDetails();
-    // Inicia a busca pelas avaliações
     _reviewsFuture = _fetchReviews();
   }
 
-  // NOVA FUNÇÃO: Busca as avaliações do local no Firestore
+  void _refreshReviews() {
+    setState(() {
+      _reviewsFuture = _fetchReviews();
+    });
+  }
+
   Future<List<PlaceReview>> _fetchReviews() async {
     final reviewsSnapshot = await FirebaseFirestore.instance
         .collection('places')
         .doc(widget.place.id)
         .collection('reviews')
-        .orderBy('createdAt', descending: true) // Mostra as mais recentes primeiro
+        .orderBy('createdAt', descending: true)
         .get();
 
     return reviewsSnapshot.docs.map((doc) {
       final data = doc.data();
-      final double average = ((data['limpeza'] ?? 0) + (data['conservacao'] ?? 0) + (data['seguranca'] ?? 0)) / 3.0;
       return PlaceReview(
-        userName: data['userName'] ?? 'Anônimo',
-        userPhotoUrl: data['userPhotoUrl'],
+        userId: data['userId'] ?? '',
         comment: data['comment'] ?? '',
-        averageRating: average,
+        limpezaRating: (data['limpeza'] as num).toDouble(),
+        conservacaoRating: (data['conservacao'] as num).toDouble(),
+        segurancaRating: (data['seguranca'] as num).toDouble(),
         createdAt: data['createdAt'] ?? Timestamp.now(),
       );
     }).toList();
@@ -76,34 +81,22 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   Future<void> _fetchPlaceDetails() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      setState(() {
-        _isLoadingFavorite = false;
-      });
+      setState(() { _isLoadingFavorite = false; });
       return;
     }
 
     final placeDoc = await FirebaseFirestore.instance.collection('places').doc(widget.place.id).get();
     if (placeDoc.exists && placeDoc.data()!.containsKey('description')) {
       if (mounted) {
-        setState(() {
-          _placeDescription = placeDoc.data()!['description'];
-        });
+        setState(() { _placeDescription = placeDoc.data()!['description']; });
       }
     } else {
       if (mounted) {
-        setState(() {
-          _placeDescription = 'Nenhuma descrição disponível.';
-        });
+        setState(() { _placeDescription = 'Nenhuma descrição disponível.'; });
       }
     }
 
-    final favoriteDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('favorites')
-        .doc(widget.place.id)
-        .get();
-
+    final favoriteDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).collection('favorites').doc(widget.place.id).get();
     if (mounted) {
       setState(() {
         _isFavorited = favoriteDoc.exists;
@@ -113,30 +106,15 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   }
 
   Future<void> _toggleFavorite() async {
-    setState(() {
-      _isLoadingFavorite = true;
-    });
-
+    setState(() { _isLoadingFavorite = true; });
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Você precisa estar logado para favoritar um local.'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-
-    final favoriteRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('favorites')
-        .doc(widget.place.id);
-
+    if (user == null) return;
+    final favoriteRef = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('favorites').doc(widget.place.id);
     if (_isFavorited) {
       await favoriteRef.delete();
     } else {
       await favoriteRef.set({'favoritedAt': Timestamp.now()});
     }
-
     if (mounted) {
       setState(() {
         _isFavorited = !_isFavorited;
@@ -161,10 +139,7 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Text(
-                _placeDescription,
-                style: const TextStyle(fontSize: 16, height: 1.5),
-              ),
+              child: Text(_placeDescription, style: const TextStyle(fontSize: 16, height: 1.5)),
             ),
             if (widget.place.imageUrl.isNotEmpty)
               Padding(
@@ -197,35 +172,27 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
             ),
             const SizedBox(height: 24),
 
-            // <<< NOVA SEÇÃO DE AVALIAÇÕES ADICIONADA AQUI >>>
-            _buildReviewsSection(),
-
+            // <<< BOTÕES DE AÇÃO AGORA VÊM PRIMEIRO >>>
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 0),
               child: Column(
                 children: [
-                  DetailOptionButton(
-                    icon: Icons.location_on_outlined,
-                    text: 'Rotas',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RouteSuggestionScreen(place: widget.place),
-                        ),
-                      );
-                    },
-                  ),
+                  DetailOptionButton(icon: Icons.location_on_outlined, text: 'Rotas', onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => RouteSuggestionScreen(place: widget.place)));
+                  }),
                   DetailOptionButton(
                       icon: Icons.star_outline,
                       text: 'Avaliar',
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        final bool? reviewSubmitted = await Navigator.push<bool>(
                           context,
                           MaterialPageRoute(
                             builder: (context) => ReviewPlaceScreen(place: widget.place),
                           ),
                         );
+                        if (reviewSubmitted == true) {
+                          _refreshReviews();
+                        }
                       }
                   ),
                   DetailOptionButton(
@@ -235,21 +202,19 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
                     isLoading: _isLoadingFavorite,
                     isActive: _isFavorited,
                   ),
-                  DetailOptionButton(
-                    icon: Icons.report_problem_outlined,
-                    text: 'Reportar problemas / vandalismo',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ReportProblemScreen(place: widget.place),
-                        ),
-                      );
-                    },
-                  ),
+                  DetailOptionButton(icon: Icons.report_problem_outlined, text: 'Reportar problemas / vandalismo', onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => ReportProblemScreen(place: widget.place)));
+                  }),
                 ],
               ),
             ),
+
+            // <<< DIVISÓRIA E SEÇÃO DE AVALIAÇÕES MOVIDAS PARA CÁ >>>
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+              child: Divider(height: 2, color: Colors.black26),
+            ),
+            _buildReviewsSection(),
             const SizedBox(height: 24),
           ],
         ),
@@ -257,7 +222,6 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
     );
   }
 
-  // NOVO WIDGET: Para construir a seção de avaliações
   Widget _buildReviewsSection() {
     return FutureBuilder<List<PlaceReview>>(
       future: _reviewsFuture,
@@ -270,25 +234,34 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
         }
 
         if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-          // Se não houver avaliações, não mostra nada (retorna um widget vazio).
-          return const SizedBox.shrink();
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Center(child: Text('Seja o primeiro a avaliar este local!')),
+          );
         }
 
-        final reviews = snapshot.data!;
+        final allReviews = snapshot.data!;
+        final reviewsToShow = _showAllReviews ? allReviews : allReviews.take(3).toList();
 
         return Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Avaliações Recentes',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
+              const Text('Avaliações Recentes', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              // Cria uma lista de cartões de avaliação
-              ...reviews.map((review) => ReviewCard(review: review)).toList(),
-              const SizedBox(height: 16), // Espaço antes dos botões de ação
+              ...reviewsToShow.map((review) => ReviewCard(review: review)).toList(),
+              if (allReviews.length > 3 && !_showAllReviews)
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _showAllReviews = true;
+                      });
+                    },
+                    child: const Text('Ver mais avaliações'),
+                  ),
+                ),
             ],
           ),
         );
@@ -297,10 +270,40 @@ class _PlaceDetailScreenState extends State<PlaceDetailScreen> {
   }
 }
 
-// NOVO WIDGET: Para exibir um único cartão de avaliação
-class ReviewCard extends StatelessWidget {
+class ReviewCard extends StatefulWidget {
   final PlaceReview review;
   const ReviewCard({super.key, required this.review});
+
+  @override
+  State<ReviewCard> createState() => _ReviewCardState();
+}
+
+class _ReviewCardState extends State<ReviewCard> {
+  late Future<DocumentSnapshot<Map<String, dynamic>>> _reviewUserFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.review.userId.isNotEmpty) {
+      _reviewUserFuture = FirebaseFirestore.instance.collection('users').doc(widget.review.userId).get();
+    }
+  }
+
+  Widget _buildRatingRow(String title, double rating) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: TextStyle(color: Colors.grey.shade600)),
+        RatingBarIndicator(
+          rating: rating,
+          itemBuilder: (context, index) => const Icon(Icons.star, color: Colors.amber),
+          itemCount: 5,
+          itemSize: 18.0,
+          direction: Axis.horizontal,
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -314,36 +317,44 @@ class ReviewCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage: review.userPhotoUrl != null ? NetworkImage(review.userPhotoUrl!) : null,
-                  child: review.userPhotoUrl == null ? const Icon(Icons.person) : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(review.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      RatingBarIndicator(
-                        rating: review.averageRating,
-                        itemBuilder: (context, index) => const Icon(Icons.star, color: Colors.amber),
-                        itemCount: 5,
-                        itemSize: 18.0,
-                        direction: Axis.horizontal,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              future: widget.review.userId.isNotEmpty ? _reviewUserFuture : null,
+              builder: (context, userSnapshot) {
+                if (userSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Row(children: [SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))]);
+                }
+
+                String userName = 'Anônimo';
+                String? userPhotoUrl;
+
+                if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                  userName = userSnapshot.data!.data()!['name'] ?? 'Anônimo';
+                  userPhotoUrl = userSnapshot.data!.data()!['photoUrl'];
+                }
+
+                return Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundImage: userPhotoUrl != null ? NetworkImage(userPhotoUrl) : null,
+                      child: userPhotoUrl == null ? const Icon(Icons.person) : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                );
+              },
             ),
+            const Divider(height: 20),
+            _buildRatingRow('Limpeza', widget.review.limpezaRating),
+            _buildRatingRow('Conservação', widget.review.conservacaoRating),
+            _buildRatingRow('Segurança', widget.review.segurancaRating),
             const SizedBox(height: 12),
-            Text(
-              review.comment,
-              style: TextStyle(color: Colors.grey.shade700),
-            ),
+            if (widget.review.comment.isNotEmpty)
+              Text(
+                widget.review.comment,
+                style: TextStyle(color: Colors.grey.shade800, fontStyle: FontStyle.italic),
+              ),
           ],
         ),
       ),

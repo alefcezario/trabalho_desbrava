@@ -21,6 +21,7 @@ class _ReviewPlaceScreenState extends State<ReviewPlaceScreen> {
   final _commentController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  bool _isAnonymous = false;
 
   @override
   void dispose() {
@@ -28,7 +29,6 @@ class _ReviewPlaceScreenState extends State<ReviewPlaceScreen> {
     super.dispose();
   }
 
-  // Função para enviar a avaliação para o Firestore
   Future<void> _submitReview() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -46,16 +46,26 @@ class _ReviewPlaceScreenState extends State<ReviewPlaceScreen> {
     }
 
     try {
-      // Adiciona a avaliação a uma nova subcoleção 'reviews' dentro do lugar
+      // Busca os dados do perfil do utilizador no Firestore
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      String userName = 'Anônimo';
+      String? userPhotoUrl;
+
+      if (userDoc.exists) {
+        userName = _isAnonymous ? 'Anônimo' : userDoc.get('name') ?? 'Anônimo';
+        userPhotoUrl = _isAnonymous ? null : userDoc.get('photoUrl');
+      }
+
+      // Adiciona a avaliação com os dados corretos
       await FirebaseFirestore.instance
           .collection('places')
           .doc(widget.place.id)
           .collection('reviews')
-          .doc(user.uid) // Usar o ID do usuário garante que ele só possa fazer uma avaliação
+          .doc(user.uid)
           .set({
         'userId': user.uid,
-        'userName': user.displayName ?? 'Anônimo', // Pega o nome do perfil do Firebase Auth se houver
-        'userPhotoUrl': user.photoURL,
+        'userName': userName,
+        'userPhotoUrl': userPhotoUrl,
         'limpeza': _limpezaRating,
         'conservacao': _conservacaoRating,
         'seguranca': _segurancaRating,
@@ -67,7 +77,9 @@ class _ReviewPlaceScreenState extends State<ReviewPlaceScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Avaliação enviada com sucesso! Obrigado.')),
         );
-        Navigator.of(context).pop();
+        // <<< ATUALIZAÇÃO AQUI >>>
+        // Retorna 'true' para a tela anterior, a avisar que a avaliação foi enviada.
+        Navigator.of(context).pop(true);
       }
 
     } catch (e) {
@@ -87,7 +99,7 @@ class _ReviewPlaceScreenState extends State<ReviewPlaceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEAE7DC), // Cor de fundo bege claro
+      backgroundColor: const Color(0xFFEAE7DC),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -102,7 +114,6 @@ class _ReviewPlaceScreenState extends State<ReviewPlaceScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // Foto e nome do lugar
               ClipRRect(
                 borderRadius: BorderRadius.circular(15.0),
                 child: Image.network(
@@ -118,7 +129,6 @@ class _ReviewPlaceScreenState extends State<ReviewPlaceScreen> {
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
-              // Cartão de avaliação
               Card(
                 elevation: 0,
                 color: Colors.grey.shade200,
@@ -146,7 +156,6 @@ class _ReviewPlaceScreenState extends State<ReviewPlaceScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Campo de texto para o comentário
               TextFormField(
                 controller: _commentController,
                 maxLines: 5,
@@ -166,8 +175,21 @@ class _ReviewPlaceScreenState extends State<ReviewPlaceScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 24),
-              // Botões
+              const SizedBox(height: 8),
+
+              CheckboxListTile(
+                title: const Text("Publicar como anônimo"),
+                value: _isAnonymous,
+                onChanged: (newValue) {
+                  setState(() {
+                    _isAnonymous = newValue ?? false;
+                  });
+                },
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+              ),
+
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(

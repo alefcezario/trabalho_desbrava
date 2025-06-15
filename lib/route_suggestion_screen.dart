@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:my_desbrava/maintenance_screen.dart';
 import 'package:my_desbrava/widgets/place_card.dart'; // Reutiliza a classe Place
 import 'package:url_launcher/url_launcher.dart';
 
@@ -15,8 +16,8 @@ class RouteSuggestionScreen extends StatefulWidget {
 class _RouteSuggestionScreenState extends State<RouteSuggestionScreen> {
   late GoogleMapController _mapController;
 
-  // <<< REMOÇÃO DA LÓGICA DE GEOCODIFICAÇÃO >>>
-  // Não precisamos mais de descobrir o endereço, ele já vem no objeto 'place'.
+  // A lógica de endereço já foi corrigida e está a vir do objeto 'place'
+  // A função _getAddressFromCoordinates foi removida.
 
   void _launchGoogleMaps() async {
     final lat = widget.place.location.latitude;
@@ -55,42 +56,45 @@ class _RouteSuggestionScreenState extends State<RouteSuggestionScreen> {
         backgroundColor: darkBlue,
         foregroundColor: Colors.white,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            flex: 3,
-            child: GoogleMap(
-              onMapCreated: (controller) {
-                _mapController = controller;
-              },
-              initialCameraPosition: CameraPosition(
-                target: LatLng(widget.place.location.latitude, widget.place.location.longitude),
-                zoom: 14.0,
-              ),
-              markers: {
-                Marker(
-                  markerId: MarkerId(widget.place.id),
-                  position: LatLng(widget.place.location.latitude, widget.place.location.longitude),
+      // <<< ATUALIZAÇÃO PRINCIPAL AQUI >>>
+      // O corpo agora é envolvido por um SingleChildScrollView para ser rolável
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Mapa com uma altura fixa para funcionar dentro de uma lista rolável
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5, // Ocupa 50% da altura da tela
+              child: GoogleMap(
+                onMapCreated: (controller) {
+                  _mapController = controller;
+                },
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(widget.place.location.latitude, widget.place.location.longitude),
+                  zoom: 14.0,
                 ),
-              },
+                markers: {
+                  Marker(
+                    markerId: MarkerId(widget.place.id),
+                    position: LatLng(widget.place.location.latitude, widget.place.location.longitude),
+                  ),
+                },
+              ),
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Container(
+            // Painel de Informações
+            Container(
               padding: const EdgeInsets.all(24.0),
               width: double.infinity,
               color: const Color(0xFFF0F0F0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // <<< ATUALIZADO PARA USAR O NOVO CAMPO >>>
                   InfoRow(icon: Icons.location_on, text: widget.place.address),
                   const SizedBox(height: 16),
                   InfoRow(icon: Icons.directions_walk, text: '${widget.place.distance.toStringAsFixed(1)} Km'),
                   const SizedBox(height: 16),
                   InfoRow(icon: Icons.access_time, text: _getTravelInfo()),
-                  const Spacer(),
+                  const SizedBox(height: 24), // Espaço antes dos botões
+                  // Botões de Ação
                   Row(
                     children: [
                       Expanded(
@@ -100,6 +104,7 @@ class _RouteSuggestionScreenState extends State<RouteSuggestionScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: darkBlue,
                             side: const BorderSide(color: darkBlue),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ),
@@ -111,20 +116,32 @@ class _RouteSuggestionScreenState extends State<RouteSuggestionScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: darkBlue,
                             foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  const Center(child: Text('Complete e receba!', style: TextStyle(fontWeight: FontWeight.bold))),
-                  const SizedBox(height: 8),
-                  const Center(child: Icon(Icons.shield, color: Colors.grey, size: 40)),
+                  const SizedBox(height: 32),
+                  // <<< SEÇÃO "COMPLETE E RECEBA" ATUALIZADA >>>
+                  // Agora é um botão que leva para a tela de manutenção
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceScreen()));
+                    },
+                    child: Column(
+                      children: [
+                        const Text('Complete e receba!', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Icon(Icons.shield, color: Colors.grey.shade600, size: 40),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          )
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -138,8 +155,12 @@ class InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: const Color(0xFF0A192F)),
+        Padding(
+          padding: const EdgeInsets.only(top: 2.0),
+          child: Icon(icon, color: const Color(0xFF0A192F)),
+        ),
         const SizedBox(width: 16),
         Expanded(child: Text(text, style: const TextStyle(fontSize: 16))),
       ],

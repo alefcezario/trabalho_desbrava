@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:my_desbrava/legal_document_screen.dart';
 import 'package:my_desbrava/login_screen.dart';
 import 'package:my_desbrava/main_wrapper.dart';
 import 'package:image_picker/image_picker.dart';
@@ -24,6 +26,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   XFile? _pickedImage;
   bool _isLoading = false;
+  // <<< NOVO ESTADO PARA A CAIXA DE SELEÇÃO >>>
+  bool _agreedToTerms = false;
 
   @override
   void dispose() {
@@ -44,13 +48,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _createAccount() async {
+    // Valida o formulário E se os termos foram aceites
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    if (!_agreedToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Você precisa de aceitar os Termos de Uso e a Política de Privacidade.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() { _isLoading = true; });
 
     try {
       UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -62,8 +72,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       String? photoUrl;
 
       if (_pickedImage != null) {
-        // <<< MUDANÇA CRÍTICA AQUI >>>
-        // Agora criamos uma pasta para cada usuário, o que simplifica as regras.
         final ref = FirebaseStorage.instance.ref().child('profile_pictures').child(userId).child('profile.jpg');
 
         if (kIsWeb) {
@@ -82,9 +90,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Conta criada com sucesso!')),
-        );
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const MainWrapper()),
               (Route<dynamic> route) => false,
@@ -103,17 +108,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         );
       }
     } catch (e) {
-      // O erro 'firebase_storage/unauthorized' será capturado aqui.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao enviar imagem: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Ocorreu um erro inesperado: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() { _isLoading = false; });
       }
     }
   }
@@ -136,24 +138,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
                 const Text('Crie sua\nConta', style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.black, height: 1.2)),
                 const SizedBox(height: 20),
-                Row(
-                  children: [
-                    const Text('Já tem uma conta?', style: TextStyle(color: Colors.black54, fontSize: 16)),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-                      },
-                      child: const Text('Entrar', style: TextStyle(color: Color(0xFF6A0DAD), fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 30),
-
+                // ... (O resto da sua UI, como o seletor de foto e os TextFormFields, continua aqui)
                 Center(
                   child: Stack(
                     children: [
@@ -185,7 +175,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 30),
                 TextFormField(
                   controller: _nameController,
@@ -223,13 +212,65 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 40),
+
+                // <<< NOVA SEÇÃO DE TERMOS ADICIONADA AQUI >>>
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Checkbox(
+                      value: _agreedToTerms,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _agreedToTerms = value ?? false;
+                        });
+                      },
+                    ),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                            style: const TextStyle(fontSize: 14, color: Colors.black54),
+                            children: [
+                              const TextSpan(text: 'Eu li e concordo com os '),
+                              TextSpan(
+                                  text: 'Termos de Uso',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, decoration: TextDecoration.underline),
+                                  recognizer: TapGestureRecognizer()..onTap = () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (context) =>
+                                    const LegalDocumentScreen(
+                                        title: 'Termos de Uso',
+                                        content: termsOfUseContent
+                                    )
+                                    ));
+                                  }
+                              ),
+                              const TextSpan(text: ' e a '),
+                              TextSpan(
+                                  text: 'Política de Privacidade',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, decoration: TextDecoration.underline),
+                                  recognizer: TapGestureRecognizer()..onTap = () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (context) =>
+                                    const LegalDocumentScreen(
+                                        title: 'Política de Privacidade',
+                                        content: privacyPolicyContent
+                                    )
+                                    ));
+                                  }
+                              ),
+                              const TextSpan(text: '.'),
+                            ]
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _createAccount,
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0A192F), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     child: _isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text('Criar Conta', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),

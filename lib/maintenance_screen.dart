@@ -10,7 +10,6 @@ class MaintenanceScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F0F0),
       appBar: AppBar(
-        // Adiciona a seta de "voltar"
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -25,7 +24,6 @@ class MaintenanceScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Texto "Oops..."
               const Text(
                 'Oops...',
                 style: TextStyle(
@@ -36,16 +34,14 @@ class MaintenanceScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // Ícone de construção (simulando a imagem)
-              const Icon(
-                Icons.construction,
-                size: 100,
-                color: darkBlue,
+              // <<< ÍCONE SUBSTITUÍDO PELA SUA IMAGEM >>>
+              Image.asset(
+                'assets/Melo.png', // Certifique-se que o nome do ficheiro está correto
+                height: 150, // Ajuste o tamanho conforme necessário
               ),
 
               const SizedBox(height: 24),
 
-              // Texto de aviso
               const Text(
                 'Estamos trabalhando por aqui!\nVolte mais tarde',
                 textAlign: TextAlign.center,
@@ -57,13 +53,11 @@ class MaintenanceScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
 
-              // Botão Voltar
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Simplesmente fecha a tela atual e volta para a anterior
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
